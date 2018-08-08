@@ -8,5 +8,11 @@ library(ggplot2)
 library(scales)
 library(RMySQL)
 library(gtools)
-significance <- read.csv(file = "significance.csv", sep = ";")
-calculaMetricas()
+#args <- commandArgs(trailingOnly = TRUE)
+#i <- as.numeric(args[1])
+#f <- as.numeric(args[2])
+#i <- 1
+#f <- 5
+#significance <- read.csv(file = "significance.csv", sep = ";")
+#calculaMetricas(i, f)
+unionProjects()

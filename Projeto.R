@@ -1,8 +1,10 @@
 library(RMySQL)
-calculaMetricas <- function(){
+calculaMetricas <- function(i, f){
   mydb = dbConnect(MySQL(), user='root', password='root', dbname='github_extract', host='127.0.0.1')
-  projects = getProjects(mydb)
-  for (row in 1:nrow(projects)) {
+  projects = getProjects(mydb, i, f)
+  length.project <- nrow(projects)
+  for (row in 1:length.project) {
+    print(paste("loading measures project ", row," of ",length.project))
     print(projects[row,'name'])
     name <- projects[row,'name']
     pulls <- getPull(projects[row,'id'], mydb)
@@ -26,23 +28,33 @@ calculaMetricas <- function(){
     users$p <- NULL
     users$n <- NULL
     users$s <- NULL
-    for (row in 1:nrow(users)) {
-      user_id <- as.numeric(users[row, "users"])
+    length.user <- nrow(users)
+    for (rowU in 1:length.user) {
+      print(paste("loading measures user ", rowU," of ",length.user))
+      user_id <- as.numeric(users[rowU, "users"])
       messages_user = filter(interactions, USER == user_id)
-      users$turnover[row] <- isTurnover(messages_user, lastProject)
+      turnoverResult <- isTurnover(messages_user, lastProject)
+      users$turnover.sifnificance[rowU] <- turnoverResult$result
+      users$turnover[rowU] <- turnoverResult$turnover
+      users$turnover180[rowU] <- turnoverResult$turnover180
       senti <- getSenti(messages_user)
-      users$p[row] <- as.numeric(senti$p)
-      users$n[row] <- as.numeric(senti$n)
-      users$s[row] <- as.numeric(senti$s)
-      users$n.pull[row] <- nrow(filter(pulls, USER == user_id))
-      users$n.issue[row] <- nrow(filter(issues, USER == user_id))
-      users$n.issue.c[row] <- nrow(filter(issuesComment, USER == user_id))
-      users$n.pull.c[row] <- nrow(filter(pullsComment, USER == user_id))
-      users$n.commit[row] <- nrow(filter(commits, USER == user_id))
-      users$n.interactions[row] <- nrow(filter(interactions, USER == user_id))
+      sentiReceived <- getSentiReceived(messages = messages, messages_user = messages_user, user = user_id)
+      users$number[rowU] <- as.numeric(senti$length)
+      users$p[rowU] <- as.numeric(senti$p)
+      users$n[rowU] <- as.numeric(senti$n)
+      users$s[rowU] <- as.numeric(senti$s)
+      users$number.received[rowU] <- as.numeric(sentiReceived$length)
+      users$p.received[rowU] <- as.numeric(sentiReceived$p)
+      users$n.received[rowU] <- as.numeric(sentiReceived$n)
+      users$s.received[rowU] <- as.numeric(sentiReceived$s)
+      users$n.pull[rowU] <- nrow(filter(pulls, USER == user_id))
+      users$n.issue[rowU] <- nrow(filter(issues, USER == user_id))
+      users$n.issue.c[rowU] <- nrow(filter(issuesComment, USER == user_id))
+      users$n.pull.c[rowU] <- nrow(filter(pullsComment, USER == user_id))
+      users$n.commit[rowU] <- nrow(filter(commits, USER == user_id))
+      users$n.interactions[rowU] <- nrow(filter(interactions, USER == user_id))
     }
-    print(users)
-    write.csv(as.matrix(users), file = paste("users_",name,".csv"))
+    write.csv(as.matrix(users), file = paste("output/users_",name,".csv"))
   }
 }
 
@@ -129,40 +141,41 @@ getPullComments <- function(project, mydb){
   return(comments)
 }
 
-getProjects <- function(mydb){
-  rs = dbSendQuery(mydb, "SELECT id, name, language, forks, htmlurl,createdat, updatedat, size  
+getProjects <- function(mydb, i, f){
+  projects <- c("'https://github.com/angular/angular.js'",
+  "'https://github.com/ANGULAR/ANGULAR-CLI'",
+  "'https://github.com/ANSIBLE/ANSIBLE'",
+  "'https://github.com/atom/atom'",
+  "'https://github.com/FORTAWESOME/FONT-AWESOME'",
+  "'https://github.com/d3/d3'",
+  "'https://github.com/django/django'",
+  "'https://github.com/electron/electron'",
+  "'https://github.com/impress/impress.js'",
+  "'https://github.com/ionic-team/ionic'",
+  "'https://github.com/jekyll/jekyll'",
+  "'https://github.com/jquery/jquery'",
+  "'https://github.com/laravel/laravel'",
+  "'https://github.com/moby/moby'",
+  "'https://github.com/nodejs/node'",
+  "'https://github.com/NPM/NPM'",
+  "'https://github.com/nwjs/nw.js'",
+  "'https://github.com/OPENSHIFT/ORIGIN'",
+  "'https://github.com/pallets/flask'",
+  "'https://github.com/rails/rails'",
+  "'https://github.com/RUST-LANG/RUST'",
+  "'https://github.com/SERVO/SERVO'",
+  "'https://github.com/TENSORFLOW/MODELS'",
+  "'https://github.com/twbs/bootstrap'",
+  "'https://github.com/VUEJS/VUE'",
+  "'https://github.com/facebook/jest'",
+  "'https://github.com/facebook/react'",
+  "'https://github.com/metal/metal.js'",
+  "'https://github.com/meteor/meteor'",
+  "'https://github.com/elixir-lang/elixir'")
+  projects_str <- paste(projects[i:f], collapse = ",")
+  rs = dbSendQuery(mydb, paste("SELECT id, name, language, forks, htmlurl,createdat, updatedat, size  
   FROM github_extract.project 
-  where htmlurl IN('https://github.com/angular/angular.js',
-                   'https://github.com/ANGULAR/ANGULAR-CLI',
-                   'https://github.com/ANSIBLE/ANSIBLE',
-                   'https://github.com/atom/atom',
-                   'https://github.com/FORTAWESOME/FONT-AWESOME',
-                   'https://github.com/CMS-SW/CMSSW',
-                   'https://github.com/d3/d3',
-                   'https://github.com/django/django',
-                   'https://github.com/elastic/elasticsearch',
-                   'https://github.com/electron/electron',
-                   'https://github.com/impress/impress.js',
-                   'https://github.com/ionic-team/ionic',
-                   'https://github.com/jekyll/jekyll',
-                   'https://github.com/jquery/jquery',
-                   'https://github.com/KUBERNETES/KUBERNETES',
-                   'https://github.com/laravel/laravel',
-                   'https://github.com/moby/moby',
-                   'https://github.com/DOCKER/DOCKER',
-                   'https://github.com/nodejs/node',
-                   'https://github.com/NPM/NPM',
-                   'https://github.com/nwjs/nw.js',
-                   'https://github.com/OPENSHIFT/ORIGIN',
-                   'https://github.com/pallets/flask',
-                   'https://github.com/rails/rails',
-                   'https://github.com/RUST-LANG/RUST',
-                   'https://github.com/SERVO/SERVO',
-                   'https://github.com/TENSORFLOW/MODELS',
-                   'https://github.com/TENSORFLOW/TENSORFLOW',
-                   'https://github.com/TGSTATION/TGSTATION',
-                   'https://github.com/twbs/bootstrap',
-                   'https://github.com/VUEJS/VUE');")
+  where htmlurl IN(",projects_str,");", sep=""))
   projects = fetch(rs, n=-1)
   return(projects)
 }
@@ -220,34 +233,87 @@ getMessagesForYear <- function(messages){
 isTurnover <- function(messages, lastProject){
   first <- min(messages$CREATEDAT)
   last <- max(messages$CREATEDAT)
-  darysnointeraction <- as.numeric(difftime(lastProject, as.Date(last), units = "days"))
+  darysnointeraction <- difftime(lastProject, as.Date(last), units = "days")
   lengthInteraction <- as.numeric(diff(sort(as.Date(messages$CREATEDAT))))
   result <- NA
   if(length(lengthInteraction) > 3){
     result <- ((as.numeric(darysnointeraction) - mean(lengthInteraction))/sd(lengthInteraction))
   }
   ninteractions <- length(lengthInteraction)
+  turnover <- NULL
   if(is.na(result)){
-      return(FALSE)
+    turnover <- FALSE
   } else {
     weight <- filter(significance, n == ninteractions)
     if(nrow(weight) != 0){
       if(result > weight$value){
-        return(TRUE)
+        turnover <- TRUE
       } else {
-        return(FALSE)
+        turnover <- FALSE
       } 
     } else if(result > max(significance$value)){
-      return(TRUE)
+      turnover <- TRUE
     } else {
-      return(FALSE)
+      turnover <- FALSE
     }
   }
+  turnover180 <- NULL
+  if(darysnointeraction > 180){
+    turnover180 <- TRUE
+  } else {
+    turnover180 <- FALSE
+  }
+  return(data.frame(result, turnover, turnover180))
 }
 
 getSenti <- function(messages, users){
+  length <- nrow(messages)
   p <- mean(as.numeric(messages$P))
   n <- mean(as.numeric(messages$N))
   s <- mean(as.numeric(messages$S))
-  return(data.frame(p, n, s))
+  return(data.frame(length, p, n, s))
+}
+
+
+getSentiReceived <- function(messages, messages_user, user){
+  id.messages = unique(messages_user$PARENT)
+  messages.received = filter(messages, PARENT %in% id.messages & USER != user)
+  length <- nrow(messages.received)
+  p <- mean(as.numeric(messages.received$P))
+  n <- mean(as.numeric(messages.received$N))
+  s <- mean(as.numeric(messages.received$S))
+  return(data.frame(length, p, n, s))
+}
+
+unionProjects <- function(){
+  mydb = dbConnect(MySQL(), user='root', password='root', dbname='github_extract', host='127.0.0.1')
+  projects = getProjects(mydb, 0, 30)
+  length.project <- nrow(projects)
+  users_nucleo <- NULL
+  users_casual <- NULL
+  users <- NULL
+  for (row in 1:length.project) {
+    name <- projects[row,'name']
+    users_project <- read.csv(file = paste("output/users_",name,".csv", sep = ""), sep = ",")
+    users_project_casual <- filter(users_project, n.interactions < 4)
+    users_project_nucleo <- filter(users_project, n.interactions > 3)
+    users <- rbind(users, users_project)
+    users_nucleo <- rbind(users_nucleo, users_project_nucleo)
+    users_casual <- rbind(users_casual, users_project_casual)
+  }
+  write.csv(users_nucleo, file = "output/project_nucleo.csv")
+  write.csv(users_casual, file = "output/project_casual.csv")
+  write.csv(users, file = "output/project_users.csv")
+}
+
+calculaSentimentos <-function(){
+  nucleo=read.csv("output/project_nucleo.csv", header=T)
+  casual=read.csv("output/project_casual.csv", header=T)
+  #mediapn <- mean(nucleo$p)
+  #mediapc <- mean(casual$p)
+  #mediann <- mean(nucleo$n)
+  #medianc <- mean(casual$n)
+  #message("Media nucleo p ", mediapn, " n ",mediann)
+  #message("Media casual p ", mediapc, " n ", medianc)
+  plot(casual$p, casual$n, ylab = "Negatividade", xlab = "Positividade")
 }
