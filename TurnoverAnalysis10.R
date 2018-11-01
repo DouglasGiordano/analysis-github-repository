@@ -6,6 +6,7 @@ library(purrr)#function map to get unique element html
 #geração da rede social
 
 create.data.network <-function(){
+  source(file = "CreateSocialNetwork.r")
   projects <- read.csv(file = "input/repositories.csv", sep = ",")
   for(i in 1:nrow(projects)){
     create.social.network(projects[i,]$name, projects[i,]$owner)
