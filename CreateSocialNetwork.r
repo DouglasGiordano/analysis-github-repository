@@ -1,30 +1,16 @@
 library(dplyr)
-create.social.network <- function(name, owner){
+create.social.network <- function(mydb, name, owner){
   library(plyr)
   library(RMySQL)
   library(rvest)#https://www.datacamp.com/community/tutorials/r-web-scraping-rvest use for scraping data html
   library(purrr)#function map to get unique element html
-  mydb = dbConnect(MySQL(), user='root', password='root', dbname='simple_github', host='127.0.0.1')
-  
+
   #issue
-  rsI = dbSendQuery(mydb, paste0("select  id, title as text, author, createdat, id as parent 
-                                 from issue 
-                                 where owner = '",owner,"' and name = '",name,"'"))
-  issues = fetch(rsI, n=-1)
-  rsIC = dbSendQuery(mydb, paste0("select id, bodyhtml as text, author, createdat, issue as parent 
-                     from issuecomment 
-                     where owner = '",owner,"' and name = '",name,"'"))
-  comments = fetch(rsIC, n=-1)
-  
+  issues = query.issue.project(mydb, owner, name)
+  comments = query.issue.comment.project(mydb, owner, name)
   #pull
-  rsP = dbSendQuery(mydb, paste0("select id, title as text, author, createdat, id as parent 
-                    from pullrequest
-                    where owner = '",owner,"' and name = '",name,"'"))
-  pulls = fetch(rsP, n=-1)
-  rsPC = dbSendQuery(mydb, paste0("select id, bodyhtml as text, author, createdat, pull as parent 
-                     from pullcomment 
-                     where owner = '",owner,"' and name = '",name,"'"))
-  pullcomments = fetch(rsPC, n=-1)
+  pulls = query.pullrequest.project(mydb, owner, name)
+  pullcomments = query.pullrequest.comment.project(mydb, owner, name)
 
   all <- rbind(issues, pulls)
   allcomment <- rbind(comments, pullcomments)
@@ -47,7 +33,7 @@ create.social.network <- function(name, owner){
         direct.mentions = search.direct.mention(text)
         indirect.mentions = search.indirect.mention(text,commentLast)
         not.mentions = search.not.mention(commentLast, direct.mentions, indirect.mentions)
-        edges = rbind(edges, get.edges.mention(comment[i,], direct.mentions, indirect.mentions, not.mentions))
+        edges = rbind(edges, get.edges.mention(owner, name, comment[i,], direct.mentions, indirect.mentions, not.mentions))
       }
     }
     edges = na.omit(edges)
@@ -64,7 +50,7 @@ save.edges <-function(edges, mydb){
   dbSendQuery(mydb, query)
 }
 
-get.edges.mention <- function(comment, direct.mentions, indirect.mentions, not.mentions){
+get.edges.mention <- function(owner, name, comment, direct.mentions, indirect.mentions, not.mentions){
   #https://www.pmg.com/blog/insert-r-data-frame-sql%EF%BB%BF/
   data.frame.edges = data.frame()
   #names(data.frame.edges)<-c("user_target","type")
@@ -94,8 +80,8 @@ get.edges.mention <- function(comment, direct.mentions, indirect.mentions, not.m
   if(nrow(data.frame.edges) == 0){
     return(NULL)
   }
-  data.frame.edges$project_name = "name"
-  data.frame.edges$project_owner = "owner"
+  data.frame.edges$project_name = name
+  data.frame.edges$project_owner = owner
   data.frame.edges$date_time = comment$createdat
   data.frame.edges$source = comment$parent
   data.frame.edges$user_source = comment$author

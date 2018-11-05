@@ -1,43 +1,39 @@
-getQueryIssue <- function(name, owner){
-  return(paste("SELECT 
-               i.id as ID, 
-               i.author as AUTHOR,
-               i.createdAt as CREATEDAT,
-               i.id as PARENT
-               FROM
-               issue as i
-               WHERE name=\"",name, "\" and owner=\"",owner,"\";", sep=""));
+query.issue.project <- function(mydb, owner, name){
+  rsI = dbSendQuery(mydb, paste0("select  id, title as text, author, createdat, id as parent 
+                                 from issue 
+                                 where owner = '",owner,"' and name = '",name,"'"))
+  issues = fetch(rsI, n=-1)
+  return(issues)
 }
 
-getQueryPull <- function(name, owner){
-  return(paste("SELECT 
-               i.id as ID, 
-               i.author as AUTHOR,
-               i.createdAt as CREATEDAT,
-               i.id as PARENT
-               FROM
-               pull as i
-               WHERE name=\"",name, "\" and owner=\"",owner,"\";", sep=""));
+query.issue.comment.project <- function(mydb, owner, name){
+  rsIC = dbSendQuery(mydb, paste0("select id, bodyhtml as text, author, createdat, issue as parent 
+                     from issuecomment 
+                                  where owner = '",owner,"' and name = '",name,"'"))
+  comments = fetch(rsIC, n=-1)
+  return(comments)
 }
 
-getQueryIssueComment <- function(name, owner){
-  return(paste("SELECT 
-               i.id as ID, 
-               i.author as AUTHOR,
-               i.createdAt as CREATEDAT,
-               i.issue as PARENT
-               FROM
-               issuecomment as i
-               WHERE name=\"",name, "\" and owner=\"",owner,"\";", sep=""));
+query.pullrequest.project <- function(mydb, owner, name){
+  rsP = dbSendQuery(mydb, paste0("select id, title as text, author, createdat, id as parent 
+                    from pullrequest
+                                 where owner = '",owner,"' and name = '",name,"'"))
+  pulls = fetch(rsP, n=-1)
+  return(pulls)
 }
 
-getQueryPullComment <- function(name, owner){
-  return(queryPullComment <- paste("SELECT 
-                                   i.id as ID, 
-                                   i.author as AUTHOR,
-                                   i.createdAt as CREATEDAT,
-                                   i.pull as PARENT
-                                   FROM
-                                   pullcomment as i
-                                   WHERE name=\"",name, "\" and owner=\"",owner,"\";", sep=""));
+query.pullrequest.comment.project <- function(mydb, owner, name){
+  rsPC = dbSendQuery(mydb, paste0("select id, bodyhtml as text, author, createdat, pull as parent 
+                     from pullcomment 
+                                  where owner = '",owner,"' and name = '",name,"'"))
+  pullcomments = fetch(rsPC, n=-1)
+  return(pullcomments)
+}
+
+query.edge.project <- function(mydb, owner, name){
+  rs = dbSendQuery(mydb, paste0("select user_source as source, user_target as target, date_time as time
+                     from edge 
+                                  where project_owner = '",owner,"' and project_name = '",name,"' order by date_time asc"))
+  edges = fetch(rs, n=-1)
+  return(edges)
 }
