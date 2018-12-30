@@ -22,19 +22,29 @@ create.social.network <- function(mydb, name, owner){
     comment$createdat = as.POSIXct(comment$createdat, "UTC", "%Y-%m-%dT%H:%M:%SZ")
     length.comment = nrow(comment)
     if(length.comment > 1){
-      for(i in 1:length.comment){
-        # An ISO-8601 encoded UTC date string.
-        data = comment$createdat[i]
-        text = comment$text[i]
-        user = comment$author[i]
-        commentLast = filter(comment, createdat < data)
-        edge = NULL
-        
-        direct.mentions = search.direct.mention(text)
-        indirect.mentions = search.indirect.mention(text,commentLast)
-        not.mentions = search.not.mention(commentLast, direct.mentions, indirect.mentions)
-        edges = rbind(edges, get.edges.mention(owner, name, comment[i,], direct.mentions, indirect.mentions, not.mentions))
-      }
+      tryCatch(
+        {
+          for(i in 1:length.comment){
+            # An ISO-8601 encoded UTC date string.
+            data = comment$createdat[i]
+            text = comment$text[i]
+            user = comment$author[i]
+            commentLast = filter(comment, createdat < data)
+            edge = NULL
+            
+            direct.mentions = search.direct.mention(text)
+            indirect.mentions = search.indirect.mention(text,commentLast)
+            not.mentions = search.not.mention(commentLast, direct.mentions, indirect.mentions)
+            edges = rbind(edges, get.edges.mention(owner, name, comment[i,], direct.mentions, indirect.mentions, not.mentions))
+          }
+        },
+        error=function(error_message) {
+          message("Error loop comment")
+          message("And below is the error message from R:")
+          message(owner, " - ", name, " ",row,"/ ",nrow.all)
+        }
+      )
+      
     }
     edges = na.omit(edges)
     if(!is.null(edges) & !empty(edges)){
