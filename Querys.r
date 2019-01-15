@@ -74,14 +74,110 @@ query.interaction.project <- function(mydb, owner, name){
   return(edges)
 }
 
-save.metric <-function(metrics, mydb){
+
+query.interaction.project.sentiment <- function(mydb, owner, name){
+  rs = dbSendQuery(mydb, paste0("SELECT 
+                                issue.author AS user,
+                                issue.positive AS positive,
+                                issue.negative AS negative,
+                                issue.id AS source
+                                FROM
+                                issue 
+                                WHERE issue.owner = '",owner,"' and issue.name = '",name,"'
+                                UNION SELECT 
+                                pullrequest.author AS user,
+                                pullrequest.positive AS positive,
+                                pullrequest.negative AS negative,
+                                pullrequest.id AS source
+                                FROM
+                                pullrequest 
+                                WHERE pullrequest.owner = '",owner,"' and pullrequest.name = '",name,"'
+                                UNION SELECT 
+                                pullcomment.author AS user,
+                                pullcomment.positive AS positive,
+                                pullcomment.negative AS negative,
+                                pullcomment.pull AS source
+                                FROM
+                                pullcomment 
+                                WHERE pullcomment.owner = '",owner,"' and pullcomment.name = '",name,"'
+                                UNION SELECT 
+                                issuecomment.author AS user,
+                                issuecomment.positive AS positive,
+                                issuecomment.negative AS negative,
+                                issuecomment.issue AS source
+                                FROM
+                                issuecomment 
+                                WHERE issuecomment.owner = '",owner,"' and issuecomment.name = '",name,"'"))
+  edges = fetch(rs, n=-1)
+  return(edges)
+}
+
+# Metrics *****************************************************************************
+get.status <- function(mydb, owner, name){
+  rs = dbSendQuery(mydb, paste0("SELECT * FROM statusmetric WHERE  owner = '", owner, "' and name= '", name,"'"))
+  status = fetch(rs, n=-1)
+  return(status)
+}
+
+save.status <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("INSERT INTO statusmetric ( owner, name) VALUES ('",owner,"','",name,"')"))
+}
+
+update.status.create.network <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createNetwork = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+
+update.status.create.sentiment.text <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createSentimentText = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+
+update.status.create.network.negative <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createNetwork = NULL WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+
+
+#### status metrics
+update.status.create.metric.network <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricNetwork = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+
+update.status.create.metric.turnover <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricTurnover = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+
+update.status.create.metric.sentiment <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricSentiment = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+
+update.status.create.metric.count <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricCount = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
+#### status metrics
+
+save.metric.project <-function(metrics, mydb){
   dbWriteTable(mydb, "metricproject", metrics, append = TRUE,row.names=FALSE)
 }
 
-save.metric.link <-function(metrics, mydb){
-  dbWriteTable(mydb, "metricuser", metrics, append = TRUE,row.names=FALSE,header = TRUE)
+save.metric.user <-function(metrics, mydb){
+  dbWriteTable(mydb, "metricuser", metrics, append = TRUE,row.names=FALSE)
 }
 
-save.metric.turnover <-function(metrics, mydb){
-  dbWriteTable(mydb, "metricuser", metrics, append = TRUE,row.names=FALSE)
+# Metrics sentiments ************************
+
+update.text.sentiment.issue <- function(mydb, id, positive, negative){
+  query = paste0("UPDATE issue SET negative = ",negative,", positive = ",positive," WHERE  id = '", id, "';")
+  rsInsert = dbSendQuery(mydb, query)
+}
+
+update.text.sentiment.issue.comment <- function(mydb, id, positive, negative){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE issuecomment SET negative = ",negative,", positive = ",positive," WHERE  id = '", id, "';"))
+}
+
+update.text.sentiment.pull <- function(mydb, id, positive, negative){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE pullrequest SET negative = ",negative,", positive = ",positive," WHERE  id = '", id, "';"))
+}
+
+
+update.text.sentiment.pull.comment <- function(mydb, id, positive, negative){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE pullcomment SET negative = ",negative,", positive = ",positive," WHERE  id = '", id, "';"))
 }

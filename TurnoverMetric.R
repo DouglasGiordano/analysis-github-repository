@@ -27,3 +27,4 @@ get.turnover.significance <- function(list.interval, interval){
   significance <- ((as.numeric(interval) - mean(list.interval))/sd(list.interval))
   return(significance)
 }
+

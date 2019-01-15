@@ -1,10 +1,9 @@
 library(dplyr)
+library(plyr)
+library(RMySQL)
+library(rvest)#https://www.datacamp.com/community/tutorials/r-web-scraping-rvest use for scraping data html
+library(purrr)#function map to get unique element html
 create.social.network <- function(mydb, name, owner){
-  library(plyr)
-  library(RMySQL)
-  library(rvest)#https://www.datacamp.com/community/tutorials/r-web-scraping-rvest use for scraping data html
-  library(purrr)#function map to get unique element html
-
   #issue
   issues = query.issue.project(mydb, owner, name)
   comments = query.issue.comment.project(mydb, owner, name)
@@ -50,7 +49,6 @@ create.social.network <- function(mydb, name, owner){
     if(!is.null(edges) & !empty(edges)){
       save.edges(edges, mydb)
     }
-    message("process ",row,"/ ",nrow.all)
   }
 }
 
