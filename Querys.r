@@ -1,3 +1,14 @@
+
+search.projects <- function(){
+  projects <- read.csv(file = paste0("input/repositories.csv"), sep = ",")
+  return(projects[i:f,])
+}
+
+get.connection.bd <- function(){
+  mydb = dbConnect(MySQL(), user='root', password='root', dbname='simple_github', host='127.0.0.1')
+  return(mydb)
+}
+
 query.issue.project <- function(mydb, owner, name){
   rsI = dbSendQuery(mydb, paste0("select  id, title as text, author, createdat, id as parent 
                                  from issue 
@@ -33,11 +44,22 @@ query.pullrequest.comment.project <- function(mydb, owner, name){
 query.edge.project <- function(mydb, owner, name){
   rs = dbSendQuery(mydb, paste0("select user_source as source, user_target as target, date_time as time
                      from edge 
-                                  where project_owner = '",owner,"' and project_name = '",name,"' order by date_time asc"))
+                                  where project_owner = '",owner,"' and project_name = '",name,"' and user_source != user_target order by date_time asc"))
   edges = fetch(rs, n=-1)
   return(edges)
 }
 
+query.metricusers <- function(mydb){
+  rs = dbSendQuery(mydb, paste0("select * from metricuser;"))
+  metrics = fetch(rs, n=-1)
+  return(metrics)
+}
+
+query.metricusers.with.significance <- function(mydb){
+  rs = dbSendQuery(mydb, paste0("select * from metricuser where significance > 0;"))
+  metrics = fetch(rs, n=-1)
+  return(metrics)
+}
 
 query.interaction.project <- function(mydb, owner, name){
   rs = dbSendQuery(mydb, paste0("SELECT 
@@ -177,7 +199,17 @@ update.text.sentiment.pull <- function(mydb, id, positive, negative){
   rsInsert = dbSendQuery(mydb, paste0("UPDATE pullrequest SET negative = ",negative,", positive = ",positive," WHERE  id = '", id, "';"))
 }
 
-
 update.text.sentiment.pull.comment <- function(mydb, id, positive, negative){
   rsInsert = dbSendQuery(mydb, paste0("UPDATE pullcomment SET negative = ",negative,", positive = ",positive," WHERE  id = '", id, "';"))
 }
+
+
+#metrics turnover
+
+update.metric.days.no.interaction <- function(mydb, user, owner, name, days_no_interaction){
+  if(user != ""){
+    user = dbEscapeStrings(mydb, user)
+    query <- sprintf('UPDATE metricuser SET days_no_interaction = %f WHERE owner = "%s" and name = "%s" and user = "%s";', days_no_interaction, owner, name, user)
+    rsInsert = dbSendQuery(mydb, query)
+  }
+  }

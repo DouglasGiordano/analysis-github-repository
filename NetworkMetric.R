@@ -29,6 +29,23 @@ get.network.metric.links <- function(vertices, graph){
   return(metrics)
 }
 
+
+#create metrics users
+get.network.metric.last <- function(edges, users){
+  n.vertices = length(users)
+  for(i in 1:n.vertices){
+    user = users[i]
+    user.edges = edges[edges$source == user,]
+    #filter for 30 days befores last interation
+    end = max(user.edges$time)
+    start = end - 30*86400
+    now.edges = edges[edges$time >= start & edges$time <= end,]
+    graph = graph.data.frame(now.edges, directed = T)
+    metrics = get.network.metric.links(V(graph)$name, graph)
+    metric = metrics[metrics$user == user,]
+  }
+}
+
 #create matric repository
 get.network.metric <- function(graph){
   #densidade da rede

@@ -2,12 +2,7 @@ library(RMySQL)
 library(rvest)#https://www.datacamp.com/community/tutorials/r-web-scraping-rvest use for scraping data html
 library(purrr)#function map to get unique element html
 # lapply(dbListConnections(MySQL()), dbDisconnect)
-
 #get connection for bd
-get.connection.bd <- function(){
-  mydb = dbConnect(MySQL(), user='root', password='root', dbname='simple_github', host='127.0.0.1')
-  return(mydb)
-}
 
 #first
 create.data.network <-function(){
@@ -104,12 +99,11 @@ get.status.processing <- function(mydb, owner, name){
 }
 
 #second
-create.metric.network <- function(project){
+create.metric.network <- function(project, mydb){
     edges = query.edge.project(mydb, project$owner, project$name)
     edges = na.omit(edges)
     users = unique(c(as.list(edges$source), as.list(edges$target)))
     users = na.omit(users)
-    print(length(users))
     edges$time = as.POSIXct(edges$time, "UTC", "%Y-%m-%d %H:%M:%S")
     max.edges = as.Date(max(edges$time))
     min.edges = as.Date(min(edges$time))
@@ -135,8 +129,9 @@ create.metric.network <- function(project){
     return(metric.links)
 }
 
+
 #github,fetch teste
-create.metric.sentiment <- function(project){
+create.metric.sentiment <- function(project, mydb){
   owner = as.character(project$owner)
   name = as.character(project$name)
   interactions <- na.omit(query.interaction.project.sentiment(mydb, owner, name))
@@ -148,7 +143,7 @@ create.metric.sentiment <- function(project){
   return(metrics.senti)
 }
 
-create.metric.count <- function(project){
+create.metric.count <- function(project, mydb){
   owner = as.character(project$owner)
   name = as.character(project$name)
   interactions <- na.omit(query.interaction.project(mydb, owner, name))
@@ -160,7 +155,7 @@ create.metric.count <- function(project){
   return(metrics)
 }
 
-create.metric.turnover <- function(project){
+create.metric.turnover <- function(project, mydb){
     owner = as.character(project$owner)
     name = as.character(project$name)
     interactions <- na.omit(query.interaction.project(mydb, owner, name))
@@ -168,8 +163,7 @@ create.metric.turnover <- function(project){
     user = na.omit(unique(interactions$user))
     
     #get and save metric of vertices
-    metric.turnover = as.data.frame(user)
-    metric.turnover$significance = as.numeric(get.turnover.metric(interactions, user))
+    metric.turnover = as.numeric(get.turnover.metric(interactions, user))
     return(metric.turnover)
 }
 
@@ -184,46 +178,49 @@ create.metrics <- function(){
   source(file ="Querys.r")
   projects = search.projects()
   mydb = get.connection.bd()
-  for(i in 1:nrow(projects)){
+  n.projects = nrow(projects)
+  for(i in 1:n.projects){
     owner = as.character(projects[i,]$owner)
     name = as.character(projects[i,]$name)
+	  message.i(owner, name, paste0(i, " of ", n.projects))
     status = get.status.processing(mydb, owner, name)
     metrics = NULL
     if(is.na(status$createMetricNetwork)){
       message.i(owner, name,"Calculating graph metrics... ")
-      metric.links = create.metric.network(projects[i,])
+      metric.links = create.metric.network(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.links)
       update.status.create.metric.network(mydb, owner, name)
     }
     
     if(is.na(status$createMetricTurnover)){
       message.i(owner, name,"Calculating turnover metrics... ")
-      metric.turnover = create.metric.turnover(projects[i,])
+      metric.turnover = create.metric.turnover(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.turnover)
       update.status.create.metric.turnover(mydb, owner, name)
     }
     
     if(is.na(status$createMetricSentiment)){
       message.i(owner, name,"Calculating sentiment metrics... ")
-      metric.sentiment = create.metric.sentiment(projects[i,])
+      metric.sentiment = create.metric.sentiment(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.sentiment)
       update.status.create.metric.sentiment(mydb, owner, name)
     }
     
     if(is.na(status$createMetricCount)){
       message.i(owner, name,"Calculating count metrics... ")
-      metric.count = create.metric.count(projects[i,])
+      metric.count = create.metric.count(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.count)
       update.status.create.metric.count(mydb, owner, name)
     }
-    
-    metrics$owner = owner
-    metrics$name = name
-    
-    save.metric.user(metrics, mydb)
-    message.i(owner, name,"Complete... ")
+    if(!is.null(metrics)){
+      metrics$owner = owner
+      metrics$name = name
+      save.metric.user(metrics, mydb)
+      message.i(owner, name,"Complete... ")
+    }
   }
 }
+
 
 merge.metrics <- function(metrics, data){
   if(is.null(metrics)){
@@ -231,9 +228,4 @@ merge.metrics <- function(metrics, data){
   } else {
     return(merge(metrics, data, by="user", all = T))
   }
-}
-
-search.projects <- function(){
-  projects <- read.csv(file = paste0("input/repositories.csv"), sep = ",")
-  return(projects[i:f,])
 }

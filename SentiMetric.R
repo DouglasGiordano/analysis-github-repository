@@ -51,3 +51,34 @@ get.sentiment.median.metric <-function(interactions, users){
   
   return(metrics[2:6])
 }
+
+get.sentiment.median.metric.last <-function(interactions, users){
+  mean.positive = c()
+  mean.negative = c()
+  received.negative = c()
+  received.positive = c()
+  for (row in 1:length(users)) {
+    user = users[row]
+    user.interactions = interactions[interactions$user == user,]
+    #filter for 30 days befores last interation
+    end = max(user.edges$time)
+    start = end - 30*86400
+    user.interactions = interactions[interactions$time >= start & interactions$time <= end & interactions$user == user,]
+    source.interactions = unique(user.interactions$source)
+    received.interactions = interactions[interactions$user != user & interactions$source %in% source.interactions,]
+    
+    mean.positive = c(mean.positive, mean(user.interactions$positive))
+    mean.negative = c(mean.negative, mean(user.interactions$negative))
+    received.negative = c(received.negative, mean(received.interactions$negative))
+    received.positive = c(received.positive, mean(received.interactions$positive))
+  }
+  
+  metrics = data.frame(matrix(NA, nrow = length(users), ncol = 1))
+  metrics$user = users
+  metrics$mean_positive = mean.positive
+  metrics$mean_negative = mean.negative
+  metrics$received_negative = received.negative
+  metrics$received_positive = received.positive
+  
+  return(metrics[2:6])
+}
