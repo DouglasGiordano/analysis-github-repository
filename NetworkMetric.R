@@ -1,6 +1,6 @@
 #format decimal numbers
 specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
-
+arpack_options.maxiter=300000
 #create metrics users
 get.network.metric.links <- function(vertices, graph){
   #betweness
@@ -12,7 +12,8 @@ get.network.metric.links <- function(vertices, graph){
   #closeness
   measure.closeness = centr_clo(graph, mode="all", normalized=T)$res
   #Eigenvector
-  measure.eigenvector = centr_eigen(graph, directed=T, normalized=T)$vector
+  #use directed false for solution problem  ARPACK error, Maximum number of iterations reached
+  measure.eigenvector = centr_eigen(graph, directed=F, normalized=T)$vector
   #measure coreness
   measure.coreness = graph.coreness(graph, mode="all")
   
@@ -33,6 +34,7 @@ get.network.metric.links <- function(vertices, graph){
 #create metrics users
 get.network.metric.last <- function(edges, users){
   n.vertices = length(users)
+  metric = NULL
   for(i in 1:n.vertices){
     user = users[i]
     user.edges = edges[edges$source == user,]
@@ -42,8 +44,9 @@ get.network.metric.last <- function(edges, users){
     now.edges = edges[edges$time >= start & edges$time <= end,]
     graph = graph.data.frame(now.edges, directed = T)
     metrics = get.network.metric.links(V(graph)$name, graph)
-    metric = metrics[metrics$user == user,]
+    metric = rbind(metric, metrics[metrics$user == user,])
   }
+  return(metric)
 }
 
 #create matric repository

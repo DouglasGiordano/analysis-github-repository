@@ -88,16 +88,6 @@ create.data.sentiment <- function(){
   }
 }
 
-get.status.processing <- function(mydb, owner, name){
-  status = get.status(mydb, owner, name)
-  if (dim(status)[1] == 0) {
-    print("Not find status.")
-    save.status(mydb, owner, name)
-    status = get.status(mydb, owner, name)
-  }
-  return(status)
-}
-
 #second
 create.metric.network <- function(project, mydb){
     edges = query.edge.project(mydb, project$owner, project$name)
@@ -189,34 +179,34 @@ create.metrics <- function(){
       message.i(owner, name,"Calculating graph metrics... ")
       metric.links = create.metric.network(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.links)
-      update.status.create.metric.network(mydb, owner, name)
     }
     
     if(is.na(status$createMetricTurnover)){
       message.i(owner, name,"Calculating turnover metrics... ")
       metric.turnover = create.metric.turnover(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.turnover)
-      update.status.create.metric.turnover(mydb, owner, name)
     }
     
     if(is.na(status$createMetricSentiment)){
       message.i(owner, name,"Calculating sentiment metrics... ")
       metric.sentiment = create.metric.sentiment(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.sentiment)
-      update.status.create.metric.sentiment(mydb, owner, name)
     }
     
     if(is.na(status$createMetricCount)){
       message.i(owner, name,"Calculating count metrics... ")
       metric.count = create.metric.count(projects[i,], mydb)
       metrics = merge.metrics(metrics, metric.count)
-      update.status.create.metric.count(mydb, owner, name)
     }
     if(!is.null(metrics)){
       metrics$owner = owner
       metrics$name = name
       save.metric.user(metrics, mydb)
       message.i(owner, name,"Complete... ")
+      update.status.create.metric.turnover(mydb, owner, name)
+      update.status.create.metric.network(mydb, owner, name)
+      update.status.create.metric.sentiment(mydb, owner, name)
+      update.status.create.metric.count(mydb, owner, name)
     }
   }
 }

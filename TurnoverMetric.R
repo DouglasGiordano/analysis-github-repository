@@ -26,7 +26,7 @@ get.turnover.metric = function(interactions, users){
   metrics$user = users
   metrics$days_no_interaction = list.days.nointeraction
   metrics$significance = significance
-  return(metrics)
+  return(metrics[2:4])
 }
 
 get.turnover.significance <- function(list.interval, interval){

@@ -61,6 +61,20 @@ query.metricusers.with.significance <- function(mydb){
   return(metrics)
 }
 
+
+query.metricusers.with.significance.last <- function(mydb){
+  rs = dbSendQuery(mydb, paste0("select * from metricuser_last where significance > 0;"))
+  metrics = fetch(rs, n=-1)
+  return(metrics)
+}
+
+
+query.metricusers.last <- function(mydb){
+  rs = dbSendQuery(mydb, paste0("select * from metricuser_last;"))
+  metrics = fetch(rs, n=-1)
+  return(metrics)
+}
+
 query.interaction.project <- function(mydb, owner, name){
   rs = dbSendQuery(mydb, paste0("SELECT 
                                 commit.author AS user,
@@ -102,7 +116,8 @@ query.interaction.project.sentiment <- function(mydb, owner, name){
                                 issue.author AS user,
                                 issue.positive AS positive,
                                 issue.negative AS negative,
-                                issue.id AS source
+                                issue.id AS source,
+                                issue.createdAt AS date
                                 FROM
                                 issue 
                                 WHERE issue.owner = '",owner,"' and issue.name = '",name,"'
@@ -110,7 +125,8 @@ query.interaction.project.sentiment <- function(mydb, owner, name){
                                 pullrequest.author AS user,
                                 pullrequest.positive AS positive,
                                 pullrequest.negative AS negative,
-                                pullrequest.id AS source
+                                pullrequest.id AS source,
+                                pullrequest.createdAt AS date
                                 FROM
                                 pullrequest 
                                 WHERE pullrequest.owner = '",owner,"' and pullrequest.name = '",name,"'
@@ -118,7 +134,8 @@ query.interaction.project.sentiment <- function(mydb, owner, name){
                                 pullcomment.author AS user,
                                 pullcomment.positive AS positive,
                                 pullcomment.negative AS negative,
-                                pullcomment.pull AS source
+                                pullcomment.pull AS source,
+                                pullcomment.createdAt AS date
                                 FROM
                                 pullcomment 
                                 WHERE pullcomment.owner = '",owner,"' and pullcomment.name = '",name,"'
@@ -126,7 +143,8 @@ query.interaction.project.sentiment <- function(mydb, owner, name){
                                 issuecomment.author AS user,
                                 issuecomment.positive AS positive,
                                 issuecomment.negative AS negative,
-                                issuecomment.issue AS source
+                                issuecomment.issue AS source,
+                                issuecomment.createdAt AS date
                                 FROM
                                 issuecomment 
                                 WHERE issuecomment.owner = '",owner,"' and issuecomment.name = '",name,"'"))
@@ -159,6 +177,17 @@ update.status.create.network.negative <- function(mydb, owner, name){
 
 
 #### status metrics
+
+get.status.processing <- function(mydb, owner, name){
+  status = get.status(mydb, owner, name)
+  if (dim(status)[1] == 0) {
+    print("Not find status.")
+    save.status(mydb, owner, name)
+    status = get.status(mydb, owner, name)
+  }
+  return(status)
+}
+
 update.status.create.metric.network <- function(mydb, owner, name){
   rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricNetwork = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
 }
@@ -174,8 +203,14 @@ update.status.create.metric.sentiment <- function(mydb, owner, name){
 update.status.create.metric.count <- function(mydb, owner, name){
   rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricCount = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
 }
+
+
+update.status.create.metrics.last <- function(mydb, owner, name){
+  rsInsert = dbSendQuery(mydb, paste0("UPDATE statusmetric SET createMetricsLast = 1 WHERE  owner = '", owner, "' and name= '", name,"'"))
+}
 #### status metrics
 
+### save metrics
 save.metric.project <-function(metrics, mydb){
   dbWriteTable(mydb, "metricproject", metrics, append = TRUE,row.names=FALSE)
 }
@@ -184,6 +219,11 @@ save.metric.user <-function(metrics, mydb){
   dbWriteTable(mydb, "metricuser", metrics, append = TRUE,row.names=FALSE)
 }
 
+
+save.metric.user.last <-function(metrics, mydb){
+  dbWriteTable(mydb, "metricuser_last", metrics, append = TRUE,row.names=FALSE)
+}
+### save metrics
 # Metrics sentiments ************************
 
 update.text.sentiment.issue <- function(mydb, id, positive, negative){
@@ -212,4 +252,11 @@ update.metric.days.no.interaction <- function(mydb, user, owner, name, days_no_i
     query <- sprintf('UPDATE metricuser SET days_no_interaction = %f WHERE owner = "%s" and name = "%s" and user = "%s";', days_no_interaction, owner, name, user)
     rsInsert = dbSendQuery(mydb, query)
   }
-  }
+}
+
+get.user.ghost <- function(mydb){
+  query = "SELECT distinct(author) FROM simple_github.commit where authorNotFound = 1";
+  select = dbSendQuery(mydb, query)
+  users = fetch(select, n=-1)
+  return(users)
+}

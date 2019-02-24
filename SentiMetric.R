@@ -53,17 +53,21 @@ get.sentiment.median.metric <-function(interactions, users){
 }
 
 get.sentiment.median.metric.last <-function(interactions, users){
+  interactions$date  = gsub("[A-Za-z]"," " , interactions$date ,ignore.case = TRUE)
+  interactions$date = substring(interactions$date, 1, 19)
+  interactions$date = as.Date(as.POSIXct(interactions$date, "UTC", "%Y-%m-%d %H:%M:%S"))
   mean.positive = c()
   mean.negative = c()
   received.negative = c()
   received.positive = c()
+  
   for (row in 1:length(users)) {
     user = users[row]
     user.interactions = interactions[interactions$user == user,]
     #filter for 30 days befores last interation
-    end = max(user.edges$time)
-    start = end - 30*86400
-    user.interactions = interactions[interactions$time >= start & interactions$time <= end & interactions$user == user,]
+    end = max(user.interactions$date)
+    start = end - 30
+    user.interactions = interactions[interactions$date >= start & interactions$date <= end & interactions$user == user,]
     source.interactions = unique(user.interactions$source)
     received.interactions = interactions[interactions$user != user & interactions$source %in% source.interactions,]
     
